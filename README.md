@@ -1,185 +1,63 @@
-# 🎧 Audio → Obsidian ( + PDF )
+# Audio to Obsidian
 
-**Any public audio or video → structured learning notes in Obsidian. Optionally export as a clean PDF.**
+`audio-to-obsidian` 是一个 AI agent skill，把播客 / 视频 / 公开音频链接整理成 Obsidian 结构化笔记，可选导出 PDF。
 
-Turn B站 videos, YouTube episodes, 小宇宙 podcasts, 抖音 clips — any public audio URL — into clean, structured notes powered by local [faster-whisper](https://github.com/SYSTRAN/faster-whisper) transcription. No API keys. No paywalls. Your notes, your vault, your PDF.
+它的目标不是做一个"很会总结"的摘要器，而是尽量保留原文的框架、对话和金句，产出一份你后续还愿意回看的笔记——不是替你理解，是帮你留住值得回看的东西。
 
----
+参考了 [podcast-to-obsidian](https://github.com/1111cecream/podcast-to-obsidian) 的 README 写法。
 
-## What It Does
+## 这个 skill 做什么
 
+- 贴一个链接（B站 / YouTube / 小宇宙 / 抖音 / 任意公开音频），自动下载音频。
+- 本地处理音频，产出带时间戳的逐字稿和结构化笔记。
+- 笔记保留对话原文、核心框架、金句，不是 AI 味的三段式摘要。
+- 自动存入 Obsidian vault，按「频道 → 单集」嵌套文件夹组织，同步更新全局索引。
+- 可选：一键导出干净 PDF，方便分享和离线阅读。
+- 支持 B站合集 / YouTube 播放列表的批量排队处理。
+
+## 使用前提
+
+你需要准备这些东西：
+
+- 一个公开的音频/视频链接（B站 / YouTube / 小宇宙 / 抖音 / 直接音频 URL）。
+- 如果要做本地音频处理，需要安装 `ffmpeg`。
+- 如果要做 PDF 导出，需要安装 `pandoc` 和 `wkhtmltopdf`（可选）。
+- 一个支持 skill 工作流的 AI 环境（Codex / Claude Code / Hermes Agent）。
+
+AI agent 首次运行时会自动检测缺失依赖并安装，零手动配置。
+
+## 主要笔记规范
+
+当前默认的笔记风格大致是这样：
+
+- 默认产出详细笔记，不是短摘要。4 小时访谈 ≈ 10–15 KB 笔记。
+- 尽量保留播客原本的展开顺序，按对话阶段分节，带对话原文和说话人标注。
+- 每个阶段末尾标注 **金句**。
+- 全文结束后有 **核心洞察**（跨章节的深层连接）、**可落地的动作**（3–5 条）、**思考题**（5–7 个开放问题）。
+- 头部信息保留：来源链接、频道/播客名、嘉宾、时长、整理日期。
+- 会主动删掉寒暄、重复铺垫、口播广告、低信息量过渡句。
+- 不把正文写成"这一段讲了什么""为什么重要"这种模板腔。
+
+## 这套风格的边界
+
+这里的笔记规范，更多是作者当前的个人习惯，不是某种唯一正确的 Obsidian 笔记标准。你可能觉得太详细、或某些部分太啰嗦——这是正常的。笔记是为自己写的，不是为别人写的。后面大概率还会继续改。
+
+播客还是要自己听，哪怕是二倍速；这个 skill 更像是帮你生成一份内容较多的笔记草稿，让你不用从零开始对着空白文档发呆。
+
+## 仓库结构
+
+```text
+audio-to-obsidian/
+├── README.md
+├── SKILL.md
+├── transcribe.py
+└── references/
+    ├── bilibili-anti-bot.md
+    ├── bilibili-batch-retrieval.md
+    ├── bilibili-subtitle-login.md
+    └── xiaoyuzhou-extraction.md
 ```
-URL (B站 / YT / 小宇宙 / 抖音 / any public audio)
-  → download audio
-    → transcribe locally (faster-whisper tiny)
-      → produce structured learning note (.md)
-        → save to Obsidian + update index
-          → optionally export as clean PDF
-```
-
-### Output per episode
-
-```
-Podcast Notes/
-├── _Index.md                              ← global index
-├── 姜Dora/
-│   └── 收入配置法 大卫翁/
-│       ├── 收入配置法 大卫翁.md           ← study note
-│       ├── 收入配置法 大卫翁.pdf           ← optional PDF export
-│       └── 收入配置法 大卫翁 transcript.md ← full transcript
-```
-
-Every note includes:
-
-- **Dialogue excerpts** with speaker labels — not just AI paraphrasing
-- **Golden sentences (金句)** pulled from the conversation
-- **Core insights** — thematic synthesis across the full episode
-- **Thinking questions (思考题)** — open questions to provoke reflection
-- **Actionable steps (可落地的动作)** — concrete things to do tomorrow
-
-**PDF export** renders the study note as a clean, print-ready document — suitable for sharing, archiving, or reading offline. Uses [Pandoc](https://pandoc.org) with `wkhtmltopdf` or LaTeX backend.
-
----
-
-## Platforms Tested
-
-| Platform | Method | Status |
-|----------|--------|--------|
-| B站 | `you-get` download → ffmpeg extract | ✅ |
-| YouTube | `yt-dlp` audio extraction | ✅ |
-| 小宇宙 | curl `og:audio` → direct download | ✅ |
-| 抖音 | `yt-dlp` direct download | ✅ |
-| Any public audio URL | curl → transcribe | ✅ |
-
-B站 series/collection batch processing also supported: paste a 合集 URL and extract all episodes at once.
-
----
-
-## Quick Start
-
-### 1. Prerequisites
-
-- **Python 3.10+**
-- **ffmpeg** (in PATH)
-- **Obsidian** vault (or any folder-based note system)
-- **Pandoc** (optional — for PDF export)
-
-### 2. Install
-
-**Option A — Let the AI agent bootstrap itself**
-
-If you're using this with an AI coding agent (Codex / Claude Code / Hermes), just load the skill and paste a URL. The agent auto-detects missing tools and installs them before processing. Zero manual setup.
-
-**Option B — Manual install**
-
-```bash
-git clone https://github.com/YOUR_USER/audio-to-obsidian.git
-cd audio-to-obsidian
-
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install faster-whisper yt-dlp you-get
-```
-
-For PDF export:
-```bash
-# macOS
-brew install pandoc wkhtmltopdf
-
-# Linux
-apt install pandoc wkhtmltopdf
-
-# Windows
-winget install Pandoc.Pandoc
-# + install wkhtmltopdf from https://wkhtmltopdf.org
-```
-
-### 3. Transcribe
-
-```bash
-python transcribe.py \
-  --audio episode.mp3 \
-  --out-dir ./work/my-episode \
-  --model tiny \
-  --language zh
-```
-
-Output: `transcript.md` + `transcript.json`
-
-### 4. Use with AI (Codex / Claude Code / Hermes)
-
-This repo includes a `SKILL.md` — a structured prompt that teaches AI agents the full pipeline. Load it into any AI coding agent:
-
-- **Codex**: Place SKILL.md in your skills directory
-- **Claude Code**: Add to `.claude/skills/`
-- **Hermes Agent**: `hermes skills install audio-to-obsidian`
-
-The agent handles everything: tool bootstrap → platform detection → download → transcription → summarization → Obsidian save → optional PDF export. You just paste a URL.
-
-### 5. Export PDF (optional)
-
-```bash
-pandoc "study-note.md" \
-  --pdf-engine=wkhtmltopdf \
-  --css=references/pdf-style.css \
-  -o "study-note.pdf"
-```
-
-Or let the AI agent do it — say "导出 PDF" after the note is written.
-
----
-
-## Configuration
-
-Before first use, set Obsidian vault path in the SKILL.md or tell your AI agent:
-
-```
-OBSIDIAN_VAULT=/Users/you/Obsidian/
-PODCAST_NOTES_DIR=<OBSIDIAN_VAULT>/Podcast Notes/
-```
-
-For proxy users (中国大陆):
-
-```bash
-export HTTPS_PROXY=http://127.0.0.1:7897
-# Needed for HuggingFace model download on first run
-```
-
----
-
-## transcribe.py
-
-A single-file CLI (104 lines) wrapping faster-whisper:
-
-```
-usage: transcribe.py [-h] --audio AUDIO --out-dir OUT_DIR
-                     [--model {tiny,small,medium,large-v3}]
-                     [--language {zh,en,ja,...}]
-```
-
-- Progress printed every 3 minutes of audio processed
-- Output: `transcript.md` (timestamped segments) + `transcript.json` (machine-readable)
-- `tiny` model: ~75MB, 3-8x realtime on CPU
-- Runs entirely offline after first model download
-
----
-
-## Notes on Quality
-
-- **tiny model** is fast but imperfect for Chinese — especially near-homophones (shùfù → shūběn, zhuānkuài → zhuāngkuài). The skill includes a semantic review step with `[?]` flagging for uncertain phrases.
-- For higher accuracy, use `--model small` (2-3x slower, better Chinese recognition).
-- B站 CC subtitles may require login — the skill documents how to check and handle this.
-
----
 
 ## License
 
-MIT
-
----
-
-## Author
-
-Built for people who prefer reading over listening, and structured notes over raw transcripts.
-
-If you find this useful, ⭐ the repo.
+本仓库使用 MIT License，方便别人学习、复用和继续修改。
