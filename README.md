@@ -4,7 +4,6 @@
 
 它的目标不是做一个"很会总结"的摘要器，而是尽量保留原文的框架、对话和金句，产出一份你后续还愿意回看的笔记——不是替你理解，是帮你留住值得回看的东西。
 
-参考了 [podcast-to-obsidian](https://github.com/1111cecream/podcast-to-obsidian) 的 README 写法。
 
 ## 这个 skill 做什么
 
